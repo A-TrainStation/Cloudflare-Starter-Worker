@@ -3,6 +3,11 @@
  * A Cloudflare edge hosted Worker for Bootstrap UI development.
  */
 
+
+String.prototype.capitalizeFirstChar = function () {
+    return this.charAt(0).toUpperCase() + this.slice(1)
+}
+
 //  Import modules
 import { rawHtmlResponse } from './std'
 import { Page } from './dom'
@@ -20,6 +25,20 @@ var ENV = {
 		}, {
 			text: 'Other Projects',
 			link: '/projects'
+		
+		}, {
+			text: 'Login',
+			link: '/login'
+
+		}, {
+			text: '/Api/F1/Driver',
+			link: '/api/f1/driver'
+		},{
+			text: '/Api/F1/Drivers/Driver',
+			link: '/api/f1/drivers/driver'
+		}, {
+			text: 'Drivers/:Year',
+			link: 'drivers/year'
 		}],
 	}]
 }
@@ -135,4 +154,166 @@ app.notFound(c => {
 	return rawHtmlResponse(page.render())
 })
 
+app.get('/drivers/:year', async c => {
+	
+	const year = c.req.param('year')
+	console.log(year)
+	const response = await app.request(`/api/f1/drivers/${year}`);
+
+	let formula = await response.json()
+
+	console.log()
+	let body = '<div class="row g-4" </div>';
+    for (const each of formula) {
+		const pepsi = `${each.first_name.substring(0,3).toUpperCase()}${each.last_name.substring(0,3).toUpperCase()}`
+        body += `<div class="col-lg-4 col-md-6 col-sm-12 mx-auto">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <div class="col-12 float-start">
+                        	${each.first_name}  <strong>${each.last_name}</strong>
+                        </div>
+                        <div class="col-12 float-end">
+                            <img src="https://flagsapi.com/AU/flat/32.png">
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <div class="text-center mx-auto col-lg-6 col-md-6 col-sm-8">
+                                <a href="/drivers/profile/${each.first_name}-${each.last_name}"><img style="max-width:100%;" class="rounded-3 shadow-lg mb-3 border-0" 
+								title="${each.first_name}/${each.last_name} headshot" 
+								alt="${each.first_name}/ ${each.last_name} headshot" loading="eager" 
+								src="https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/${each.first_name.substring(0,1)}/${pepsi}01_${each.first_name}_${each.last_name}/${pepsi}01.png.transform/5col/image.png"></a>
+                            </div>
+                            <div class="text-center mx-auto col-lg-6 col-md-6 col-sm-12">
+                                <p class="border-top border-bottom py-1 h5 fw-bold" lang="en">
+                                    3
+                                </p>                                        
+								<a href="/drivers/profile/api/f1/driver/${each.first_name}-${each.last_name}"><img style="max-width:100%;" class="rounded-3 shadow-lg mb-3 border-0" title="${each.first_name} ${each.last_name} headshot" alt="${each.first_name} ${each.last_name} headshot" loading="eager" src="https://media.formula1.com/d_default_fallback_image.png/content/dam/fom-website/2018-redesign-assets/drivers/number-logos/${pepsi}01.png"></a>
+                            </div>      
+                        </div>     
+                    </div>          
+                    <div class="card-footer">
+                        <div class="row text-center">
+							<div class="col-lg-6 col-md-9 p-1 my-3 mx-auto rounded-3" style="color: black; background-color:#6692FF">RB</div>
+						</div>
+                    </div>
+                </div>
+            </div>
+`;
+    }
+    
+    const page = new Page({
+        formulaOneTitle: 'Drivers',
+        headerOverwrite: _headerDef + applyCSSTheme('red'),
+        body: body
+	});
+    
+    return rawHtmlResponse(page.render());
+});
+	
+
+app.get('/login', async c => {
+    const page = new Page({
+        pageTitle: 'Login',
+        headerOverwrite: _headerDef + applyCSSTheme('green'),
+        body: `
+        <div class="card-body">
+			<div id="message"></div> <!-- This is where login messages will appear -->
+			<form id="loginForm" method="GET">
+				<div class="mb-3">
+					<label for="exampleInputEmail1" class="form-label">Email address</label>
+					<input type="email" name="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+					<div id="emailHelp" class="form-text"></div>
+				</div>
+				<div class="mb-3">
+					<label for="exampleInputPassword1" class="form-label">Password</label>
+					<input type="password" name="password" class="form-control" id="exampleInputPassword1">
+				</div>
+				<button type="submit" class="btn poh-primary btn-block">Submit</button>
+			</form>
+		</div>
+        `
+    });
+    return rawHtmlResponse(page.render());
+});
+
+
+app.get('/api/f1/driver', async c=>{
+	const response = await fetch('https://api.openf1.org/v1/drivers?driver_number=1&session_key=9158')
+		return c.json (await response.json());
+
+});
+
+
+app.get('/api/f1/drivers/driver', async (c) => {
+	
+
+	let { first_name = 'max', last_name = 'verstappen' } = c.req.query()
+	console.log()
+	first_name = first_name.capitalizeFirstChar()
+	last_name = last_name.capitalizeFirstChar()
+
+
+    const response = await fetch(`https://api.openf1.org/v1/drivers?first_name=${first_name}&last_name=${last_name}&session_key=9158`);
+
+    //const response = await fetch(`https://api.openf1.org/v1/drivers?broadcast_names=M_VERSTAPPEN&session_key=9158`);
+
+	 return c.json (await response.json())
+
+ });
+ app.get('/api/f1/drivers/drivers', async (c) => {
+	
+    const response = await fetch(`https://api.openf1.org/v1/drivers`);
+
+	const drivers = await response.json()
+	
+	let driverNames = []
+	for (const each of drivers){
+		if( driverNames.includes(each.full_name)){
+			continue;
+		}
+		driverNames.push(each.full_name)
+			
+	}
+    //const response = await fetch(`https://api.openf1.org/v1/drivers?broadcast_names=M_VERSTAPPEN&session_key=9158`);
+
+	 return c.json (driverNames)
+
+ });
+
+
+ app.get('/api/f1/drivers/:year', async (c) => {
+	console.log("hi")
+    const year = c.req.param('year'); // Get the year from the request parameters
+
+    // First, fetch the meeting information for the given year
+    const meetingResponse = await fetch(`https://api.openf1.org/v1/meetings?year=${year}`);
+    const meetings = await meetingResponse.json();
+
+    // Assuming meetings[0].meeting_key contains the meeting_key you need for drivers
+	console.log()
+    const meeting_key = meetings[0].meeting_key; // Adjust this based on your API response
+
+    // Now fetch the drivers based on the retrieved meeting key
+	console.log()
+    const driversResponse = await fetch(`https://api.openf1.org/v1/drivers?meeting_key=${meeting_key}`);
+    const drivers = await driversResponse.json();
+
+    // Extract unique driver names
+    let driverNames = [];
+	let driverLists = [];
+    for (const each of drivers) {
+        if (!driverNames.includes(each.full_name)) {
+            driverNames.push(each.full_name)
+			driverLists.push(each);
+        }
+    }
+
+    return c.json(driverLists); // Return JSON response with driver names
+});
+
+
 export default app
+
+
+
